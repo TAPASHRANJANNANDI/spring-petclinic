@@ -7,7 +7,7 @@ pipeline {
 
     tools {
         jdk "java25"
-        maven "maven-home"
+        maven "maven3"
     }
 
     stages {
