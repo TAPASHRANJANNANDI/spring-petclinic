@@ -1,92 +1,87 @@
 pipeline {
+
     agent any
 
     environment {
         APP_NAME = "spring-petclinic"
     }
 
+    parameters {
+        string(name: 'BRANCH', defaultValue: 'main', description: 'Branch to build from')
+    }
+
+    options {
+        timeout(time: 10, unit: 'MINUTES')
+    }
+
     tools {
-        jdk "java25"
-        maven "maven3"
+        jdk "java-home-25"
+        maven "maven-home"
     }
 
     stages {
+
         stage('Git Checkout') {
             steps {
-                git branch: 'main', url: 'https://github.com/Sumukha47/spring-petclinic.git'
+                git branch: "${params.BRANCH}", url: 'https://github.com/Sumukha47/spring-petclinic.git'
             }
         }
 
         stage('Build and Package') {
             steps {
-                bat 'mvn clean package'
+                bat 'mvn package'
+            }
+        }
+
+        stage('Artifact Extraction') {
+            steps {
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
             }
         }
     }
 
     post {
+
         success {
             echo "Build succeeded for ${APP_NAME}"
+
             mail(
-                bcc: '',
-                cc: 'akshathabm20@gmail.com',
-                from: 'sumukhadaring@gmail.com',
-                replyTo: '',
-                subject: "SUCCESS: ${APP_NAME} Build #${env.BUILD_NUMBER}",
                 to: 'sumukhadaring@gmail.com',
+                cc: 'akshathabm20@gmail.com',
+                subject: "SUCCESS: ${APP_NAME} Build #${env.BUILD_NUMBER}",
                 body: """Hello Developer,
 
-This is to inform you that the Jenkins pipeline for ${env.JOB_NAME} has completed successfully.
+Jenkins Pipeline for **${env.JOB_NAME}** completed successfully.
 
 Build Details:
-- Job Name: ${env.JOB_NAME}
 - Build Number: ${env.BUILD_NUMBER}
-- Build Timestamp: ${env.BUILD_TIMESTAMP}
-- Executed By: Jenkins CI
-- Repository: https://github.com/Sumukha47/spring-petclinic.git
-
-Build URL: ${env.BUILD_URL}
-Artifacts: ${env.BUILD_URL}artifact/target/
-Console Logs: ${env.BUILD_URL}console
-
-All stages were executed successfully and the artifacts have been generated.
+- Build URL: ${env.BUILD_URL}
+- Console Logs: ${env.BUILD_URL}console
+- Artifacts Download: ${env.BUILD_URL}artifact/target/
 
 Best regards,
-Jenkins CI Server
-(Automated Notification)
+Sumukha Upadhyaya
 """
             )
         }
 
         failure {
-            echo "Build failed for ${APP_NAME}"
-             mail(
-                bcc: '',
-                cc: 'akshathabm20@gmail.com',
-                from: 'sumukhadaring@gmail.com',
-                replyTo: '',
-                subject: "FAILURE: ${APP_NAME} Build #${env.BUILD_NUMBER}",
+            mail(
                 to: 'sumukhadaring@gmail.com',
+                cc: 'akshathabm20@gmail.com',
+                subject: "FAILURE: ${APP_NAME} Build #${env.BUILD_NUMBER}",
                 body: """Hello Developer,
 
-This is to inform you that the Jenkins pipeline for ${env.JOB_NAME} has failed during execution.
-
-Build Details:
-- Job Name: ${env.JOB_NAME}
-- Build Number: ${env.BUILD_NUMBER}
-- Build Timestamp: ${env.BUILD_TIMESTAMP}
-- Executed By: Jenkins CI
-- Repository: https://github.com/Sumukha47/spring-petclinic.git
+Jenkins Pipeline for **${env.JOB_NAME}** has failed.
 
 Build URL: ${env.BUILD_URL}
-Artifacts (if any): ${env.BUILD_URL}artifact/target/
 Console Logs: ${env.BUILD_URL}console
+(If generated) Artifacts: ${env.BUILD_URL}artifact/target/
 
-Please review the console output and error logs at the above link to identify and resolve the issue.
+Please check the logs to resolve the issue.
 
 Best regards,
-Jenkins CI Server
-(Automated Notification)
+Sumukha Upadhyaya
 """
             )
         }
