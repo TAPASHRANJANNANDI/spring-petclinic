@@ -1,0 +1,90 @@
+node {
+
+    // --- Environment variables ---
+    env.APP_NAME = "spring-petclinic"
+
+    // --- Tools configuration ---
+    def JAVA_HOME = tool name: 'java-home-25', type: 'jdk'
+    def MAVEN_HOME = tool name: 'maven-home', type: 'maven'
+    env.PATH = "${JAVA_HOME}/bin:${MAVEN_HOME}/bin:${env.PATH}"
+
+    // --- Pipeline properties ---
+    properties([
+        parameters([
+            string(name: 'BRANCH', defaultValue: 'main', description: 'Branch to build from')
+        ]),
+        pipelineTriggers([
+            githubPush()  // Webhook trigger for GitHub push events
+        ])
+    ])
+
+    // ✅ Correct usage: timeout wraps your entire build logic
+    timeout(time: 10, unit: 'MINUTES') {
+        try {
+            stage('Git Checkout') {
+                echo "Checking out branch: ${params.BRANCH}"
+                git branch: "${params.BRANCH}", url: 'https://github.com/Sumukha47/spring-petclinic.git'
+            }
+
+            stage('Build and Package') {
+                echo "Building project using Maven..."
+                sh 'mvn package'
+            }
+
+            stage('Artifact Extraction') {
+                echo "Archiving build artifacts..."
+                archiveArtifacts artifacts: 'target/*.jar', fingerprint: true
+            }
+
+            // --- Success message ---
+            echo "Build succeeded for ${env.APP_NAME}"
+
+            // --- Success email ---
+            mail(
+                to: 'sumukhadaring@gmail.com',
+                cc: 'akshathabm20@gmail.com',
+                subject: "SUCCESS: ${env.APP_NAME} Build #${env.BUILD_NUMBER}",
+                body: """Hello Developer,
+
+Jenkins Pipeline for **${env.JOB_NAME}** completed successfully.
+
+Build Details:
+- Build Number: ${env.BUILD_NUMBER}
+- Build URL: ${env.BUILD_URL}
+- Console Logs: ${env.BUILD_URL}console
+- Artifacts Download: ${env.BUILD_URL}artifact/target/
+
+Best regards,
+Sumukha Upadhyaya
+"""
+            )
+
+        } catch (err) {
+            // --- Failure message ---
+            echo "Build failed for ${env.APP_NAME}: ${err}"
+
+            // --- Failure email ---
+            mail(
+                to: 'sumukhadaring@gmail.com',
+                cc: 'akshathabm20@gmail.com',
+                subject: "FAILURE: ${env.APP_NAME} Build #${env.BUILD_NUMBER}",
+                body: """Hello Developer,
+
+Jenkins Pipeline for **${env.JOB_NAME}** has failed.
+
+Build URL: ${env.BUILD_URL}
+Console Logs: ${env.BUILD_URL}console
+(If generated) Artifacts: ${env.BUILD_URL}artifact/target/
+
+Please check the logs to resolve the issue.
+
+Best regards,
+Sumukha Upadhyaya
+"""
+            )
+
+            currentBuild.result = 'FAILURE'
+            throw err
+        }
+    }
+}
